@@ -12,6 +12,7 @@ using Ray1Map.GBC;
 using Ray1Map.GEN;
 using Ray1Map.KlonoaHeroes;
 using Ray1Map.PSKlonoa;
+using Ray1Map.PS2Klonoa;
 using Ray1Map.Psychonauts;
 using Ray1Map.Rayman1;
 using Ray1Map.Rayman1_Jaguar;
@@ -964,6 +965,16 @@ namespace Ray1Map
         [GameMode(MajorEngineVersion.PSKlonoa, EngineVersion.PSKlonoa_DTP, Game.PS1Klonoa_DoorToPhantomile, "Klonoa Door to Phantomile (PS2)", typeof(PSKlonoa_DTP_Manager_PS2), Platform.PS2)]
         KlonoaDoorToPhantomilePS2,
 
+        #endregion
+        
+        #region PS2 Klonoa
+        
+        [GameMode(MajorEngineVersion.PSKlonoa, EngineVersion.PS2Klonoa_LV, Game.PS2Klonoa_LunateasVeil, "Klonoa 2: Lunatea's Veil (PS2 - US/JP)", typeof(PS2Klonoa_LV_Manager_USJP), Platform.PS2)]
+        Klonoa2LunateasVeilPS2USJP,
+        
+        [GameMode(MajorEngineVersion.PSKlonoa, EngineVersion.PS2Klonoa_LV, Game.PS2Klonoa_LunateasVeil, "Klonoa 2: Lunatea's Veil (PS2 - EU)", typeof(PS2Klonoa_LV_Manager_EU), Platform.PS2)]
+        Klonoa2LunateasVeilPS2EU,
+        
         #endregion
 
         #region Psychonauts

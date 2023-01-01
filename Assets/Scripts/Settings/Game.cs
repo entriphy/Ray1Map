@@ -141,6 +141,9 @@
 
         // Klonoa PS1
         PS1Klonoa_DoorToPhantomile,
+        
+        // Klonoa PS2
+        PS2Klonoa_LunateasVeil,
 
         // Psychonauts
         Psychonauts_Psychonauts,

@@ -185,6 +185,7 @@ namespace Ray1Map
         KlonoaHeroes,
 
         PSKlonoa_DTP,
+        PS2Klonoa_LV,
 
         Psychonauts,
     }
