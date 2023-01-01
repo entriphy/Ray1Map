@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
 using BinarySerializer;
+using BinarySerializer.Klonoa;
+using BinarySerializer.Klonoa.LV;
 using Cysharp.Threading.Tasks;
-using Ray1Map;
+using UnityEngine;
 
 namespace Ray1Map.PS2Klonoa
 {
@@ -43,11 +45,116 @@ namespace Ray1Map.PS2Klonoa
             ("Boss: Cursed Leorina", 26, 2),
             ("Boss: King of Sorrow", 27, 3),
         };
-
-        public override UniTask<Unity_Level> LoadAsync(Context context)
+        
+        public abstract KlonoaSettings_LV GetKlonoaSettings(GameSettings settings);
+        
+        public HeadPack_ArchiveFile Load_Headpack(Context context, KlonoaSettings_LV settings)
         {
-            throw new System.NotImplementedException();
+            return FileFactory.Read<HeadPack_ArchiveFile>(context, settings.FilePath_HEAD, 
+                (_, head) => head.Pre_HasMultipleLanguages = settings.HasMultipleLanguages);
         }
+        
+        #endregion
+        
+        #region Game Actions
+        
+        public override GameAction[] GetGameActions(GameSettings settings)
+        {
+            return new GameAction[]
+            {
+                // TODO: Add game actions
+            };
+        }
+        
+        #endregion
+        
+        #region Load
+        
+        public override async UniTask<Unity_Level> LoadAsync(Context context)
+        {
+            // Get settings
+            GameSettings settings = context.GetR1Settings();
+            int lev = settings.World;
+            int sector = settings.Level;
+            KlonoaSettings_LV config = GetKlonoaSettings(settings);
+
+            // Create the level
+            var level = new Unity_Level()
+            {
+                CellSize = 16,
+                FramesPerSecond = 60,
+                StartIn3D = true,
+                StartPosition = new Vector3(20, 20, 20), // TODO: Find appropriate start position
+                IsometricData = new Unity_IsometricData
+                {
+                    CollisionMapWidth = 0,
+                    CollisionMapHeight = 0,
+                    TilesWidth = 0,
+                    TilesHeight = 0,
+                    CollisionMap = null,
+                    ViewAngle = Quaternion.Euler(90, 0, 0),
+                    CalculateYDisplacement = () => 0,
+                    CalculateXDisplacement = () => 0,
+                    ObjectScale = Vector3.one * 1
+                },
+            };
+            
+            // Add files to context
+            await context.AddLinearFileAsync(config.FilePath_HEAD);
+            await context.AddLinearFileAsync(config.GetFilePath(Loader.BINType.KL));
+            context.AddKlonoaSettings(config);
+            
+            // Load HEADPACK.BIN and create loader
+            Controller.DetailedState = "Loading HEADPACK.BIN";
+            await Controller.WaitIfNecessary();
+            HeadPack_ArchiveFile headpack = Load_Headpack(context, config);
+            Loader loader = Loader.Create(context, headpack);
+            
+            // Load level packs
+            Controller.DetailedState = "Loading preload data";
+            await Controller.WaitIfNecessary();
+            var preloadPack = loader.LoadBINFile<LevelPreloadPack_ArchiveFile>(Loader.BINType.KL, lev * 2);
+                
+            Controller.DetailedState = "Loading level data";
+            await Controller.WaitIfNecessary();
+            var dataPack = loader.LoadBINFile<LevelDataPack_ArchiveFile>(Loader.BINType.KL, lev * 2 + 1);
+            
+            // Create object manager
+            Unity_ObjectManager_PS2Klonoa_LV objManager = new Unity_ObjectManager_PS2Klonoa_LV(context);
+            level.ObjManager = objManager;
+            
+            // Load layers
+            Controller.DetailedState = "Loading level geometry";
+            await Controller.WaitIfNecessary();
+
+            // TODO: Create loader classes
+            var geometryFile = dataPack.CommonAssets.SectorData.Sectors[sector].Geometry;
+            level.Layers = new[] { Load_Layers_LevelObject(loader, Controller.obj.levelController.editor.layerTiles, geometryFile) };
+
+            return level;
+        }
+
+        public Unity_Layer Load_Layers_LevelObject(Loader loader, GameObject parent, VIFGeometry_File geometry)
+        {
+            var vifGeometryGameObj = new Klonoa2VIFGameObject(geometry, loader.Context);
+            GameObject obj = vifGeometryGameObj.CreateGameObject("Map");
+            // Bounds levelBounds = new Bounds();
+            var layerDimensions = new Rect(0, 0, 1, 1); // TODO: Calculate layer dimensions properly 
+
+            obj.transform.SetParent(parent.transform, false);
+            const float scale = 1 / 32f;
+            obj.transform.localScale = new Vector3(scale, scale, scale);
+
+            return new Unity_Layer_GameObject(true)
+            {
+                Name = "Map",
+                ShortName = "MAP",
+                Graphics = obj,
+                Dimensions = layerDimensions,
+                DisableGraphicsWhenCollisionIsActive = true
+            };
+        }
+        
         #endregion
     }
 }
