@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using BinarySerializer;
 using BinarySerializer.Klonoa;
 using BinarySerializer.Klonoa.LV;
 using Cysharp.Threading.Tasks;
+using Games.PS2Klonoa;
 using UnityEngine;
+using Ray1Map;
 
 namespace Ray1Map.PS2Klonoa
 {
@@ -109,7 +112,7 @@ namespace Ray1Map.PS2Klonoa
             await Controller.WaitIfNecessary();
             HeadPack_ArchiveFile headpack = Load_Headpack(context, config);
             Loader loader = Loader.Create(context, headpack);
-            
+
             // Load level packs
             Controller.DetailedState = "Loading preload data";
             await Controller.WaitIfNecessary();
@@ -124,19 +127,26 @@ namespace Ray1Map.PS2Klonoa
             level.ObjManager = objManager;
             
             // Load layers
+            // TODO: Create loader classes
+            Controller.DetailedState = "Loading level textures";
+            await Controller.WaitIfNecessary();
+            var texturesFile = dataPack.CommonAssets.SectorData.Sectors[sector].Textures;
+            var textures = texturesFile.GetTextures();
+            
             Controller.DetailedState = "Loading level geometry";
             await Controller.WaitIfNecessary();
-
-            // TODO: Create loader classes
             var geometryFile = dataPack.CommonAssets.SectorData.Sectors[sector].Geometry;
-            level.Layers = new[] { Load_Layers_LevelObject(loader, Controller.obj.levelController.editor.layerTiles, geometryFile) };
-
+            level.Layers = new[]
+            {
+                Load_Layers_LevelObject(loader, Controller.obj.levelController.editor.layerTiles, geometryFile, textures)
+            };
+            
             return level;
         }
 
-        public Unity_Layer Load_Layers_LevelObject(Loader loader, GameObject parent, VIFGeometry_File geometry)
+        public Unity_Layer Load_Layers_LevelObject(Loader loader, GameObject parent, VIFGeometry_File geometry, Dictionary<int, Texture2D> textures)
         {
-            var vifGeometryGameObj = new Klonoa2VIFGameObject(geometry, loader.Context);
+            var vifGeometryGameObj = new Klonoa2VIFGameObject(geometry, textures, loader.Context);
             GameObject obj = vifGeometryGameObj.CreateGameObject("Map");
             // Bounds levelBounds = new Bounds();
             var layerDimensions = new Rect(0, 0, 1, 1); // TODO: Calculate layer dimensions properly 

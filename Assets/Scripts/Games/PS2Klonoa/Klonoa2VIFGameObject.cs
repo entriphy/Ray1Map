@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using BinarySerializer;
 using BinarySerializer.Klonoa.LV;
@@ -9,19 +10,22 @@ namespace Ray1Map.PS2Klonoa
 {
     public class Klonoa2VIFGameObject
     {
-        public Klonoa2VIFGameObject(VIFGeometry_File geometry, Context context)
+        public Klonoa2VIFGameObject(VIFGeometry_File geometry, Dictionary<int, Texture2D> textures, Context context)
         {
             Geometry = geometry;
+            Textures = textures;
             Context = context;
         }
 
         public VIFGeometry_File Geometry { get; }
+        private Dictionary<int, Texture2D> Textures { get; }
         public Context Context { get; }
 
         public GameObject CreateGameObject(string name)
         {
             GameObject gaoParent = new GameObject(name);
             gaoParent.transform.position = Vector3.zero;
+            Dictionary<string, Material> materialDict = new Dictionary<string, Material>();
 
             for (int s = 0; s < Geometry.Sections.Length; s++)
             {
@@ -40,7 +44,16 @@ namespace Ray1Map.PS2Klonoa
                     MeshFilter mf = obj.AddComponent<MeshFilter>();
                     MeshRenderer mr = obj.AddComponent<MeshRenderer>();
                     mf.mesh = block.GetMesh();
-                    mr.material = Controller.obj.levelController.controllerTilemap.unlitMaterial;
+                    string materialKey = $"tbp{block.TEX0.TPB0}_cbp{block.TEX0.CBP}_{block.TEX0.TW}x{block.TEX0.TH}";
+                    if (!materialDict.TryGetValue(materialKey, out var material))
+                    {
+                        material = new Material(Controller.obj.levelController.controllerTilemap.unlitTransparentCutoutMaterial);
+                        if (block.TEX0.TPB0 > 0)
+                            material.SetTexture("_MainTex", Textures.GetTexture(block.TEX0));
+                        materialDict[materialKey] = material;
+                    }
+                    
+                    mr.material = material;
                 }
             }
             
