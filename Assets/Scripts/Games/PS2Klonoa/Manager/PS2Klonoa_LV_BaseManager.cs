@@ -120,7 +120,11 @@ namespace Ray1Map.PS2Klonoa
                 
             Controller.DetailedState = "Loading level data";
             await Controller.WaitIfNecessary();
-            var dataPack = loader.LoadBINFile<LevelDataPack_ArchiveFile>(Loader.BINType.KL, lev * 2 + 1);
+            var levelPack = loader.LoadBINFile<LevelDataPack_ArchiveFile>(Loader.BINType.KL, lev * 2 + 1);
+            var sectorPack = levelPack.CommonAssets.SectorData.Sectors[sector];
+            if (sector < levelPack.MiscAssets.SectorConfigs.Files.Length)
+                level.CameraClear = new Unity_CameraClear(levelPack.MiscAssets.SectorConfigs.Files[sector].FogColor?.GetColor() 
+                                                          ?? Color.black);
             
             // Create object manager
             Unity_ObjectManager_PS2Klonoa_LV objManager = new Unity_ObjectManager_PS2Klonoa_LV(context);
@@ -130,12 +134,12 @@ namespace Ray1Map.PS2Klonoa
             // TODO: Create loader classes
             Controller.DetailedState = "Loading level textures";
             await Controller.WaitIfNecessary();
-            var texturesFile = dataPack.CommonAssets.SectorData.Sectors[sector].Textures;
+            var texturesFile = sectorPack.Textures;
             var textures = texturesFile.GetTextures();
             
             Controller.DetailedState = "Loading level geometry";
             await Controller.WaitIfNecessary();
-            var geometryFile = dataPack.CommonAssets.SectorData.Sectors[sector].Geometry;
+            var geometryFile = sectorPack.Geometry;
             level.Layers = new[]
             {
                 Load_Layers_LevelObject(loader, Controller.obj.levelController.editor.layerTiles, geometryFile, textures)
