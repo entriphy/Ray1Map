@@ -5,9 +5,9 @@ using BinarySerializer;
 using BinarySerializer.Klonoa;
 using BinarySerializer.Klonoa.LV;
 using Cysharp.Threading.Tasks;
-using Games.PS2Klonoa;
 using UnityEngine;
 using Ray1Map;
+using Loader = BinarySerializer.Klonoa.LV.Loader;
 
 namespace Ray1Map.PS2Klonoa
 {
@@ -121,7 +121,6 @@ namespace Ray1Map.PS2Klonoa
             Controller.DetailedState = "Loading level data";
             await Controller.WaitIfNecessary();
             var levelPack = loader.LoadBINFile<LevelDataPack_ArchiveFile>(Loader.BINType.KL, lev * 2 + 1);
-            var sectorPack = levelPack.CommonAssets.SectorData.Sectors[sector];
             if (sector < levelPack.MiscAssets.SectorConfigs.Files.Length)
                 level.CameraClear = new Unity_CameraClear(levelPack.MiscAssets.SectorConfigs.Files[sector].FogColor?.GetColor() 
                                                           ?? Color.black);
@@ -132,6 +131,25 @@ namespace Ray1Map.PS2Klonoa
             
             // Load layers
             // TODO: Create loader classes
+            await Load_Layers(loader, level, levelPack, sector);
+
+            return level;
+        }
+
+        public async UniTask Load_Layers(Loader loader, Unity_Level level, LevelDataPack_ArchiveFile levelPack, int sector)
+        {
+            List<Unity_Layer> layers = new List<Unity_Layer>();
+            var sectorPack = levelPack.CommonAssets.SectorData.Sectors[sector];
+            var parentObj = Controller.obj.levelController.editor.layerTiles;
+            
+            layers.Add(await Load_Layers_LevelObject(loader, parentObj, sectorPack));
+            layers.AddRange(await Load_Layers_Background(loader, parentObj, levelPack, sector));
+
+            level.Layers = layers.ToArray();
+        }
+
+        public async UniTask<Unity_Layer> Load_Layers_LevelObject(Loader loader, GameObject parent, LevelSector_ArchiveFile sectorPack)
+        {
             Controller.DetailedState = "Loading level textures";
             await Controller.WaitIfNecessary();
             var texturesFile = sectorPack.Textures;
@@ -139,17 +157,8 @@ namespace Ray1Map.PS2Klonoa
             
             Controller.DetailedState = "Loading level geometry";
             await Controller.WaitIfNecessary();
-            var geometryFile = sectorPack.Geometry;
-            level.Layers = new[]
-            {
-                Load_Layers_LevelObject(loader, Controller.obj.levelController.editor.layerTiles, geometryFile, textures)
-            };
+            var geometry = sectorPack.Geometry;
             
-            return level;
-        }
-
-        public Unity_Layer Load_Layers_LevelObject(Loader loader, GameObject parent, VIFGeometry_File geometry, Dictionary<int, Texture2D> textures)
-        {
             var vifGeometryGameObj = new Klonoa2VIFGameObject(geometry, textures, loader.Context);
             GameObject obj = vifGeometryGameObj.CreateGameObject("Map");
             // Bounds levelBounds = new Bounds();
@@ -167,6 +176,46 @@ namespace Ray1Map.PS2Klonoa
                 Dimensions = layerDimensions,
                 DisableGraphicsWhenCollisionIsActive = true
             };
+        }
+
+        public async UniTask<List<Unity_Layer>> Load_Layers_Background(Loader loader, GameObject parent, LevelDataPack_ArchiveFile levelPack, int sector)
+        {
+            var backgroundLayers = new List<Unity_Layer>();
+
+            for (int i = 0; i < 6; i++)
+            {
+                var geometry = levelPack.MiscAssets.ScriptData.Files[sector].BackgroundGeometry[i];
+                if (geometry == null)
+                    continue;
+                var texturesDict = new Dictionary<int, Texture2D>();
+                foreach (var textures in levelPack.MiscAssets.BackgroundTextures.Textures[sector].Textures)
+                {
+                    if (textures == null)
+                        continue;
+                    textures.GetTextures().ToList().ForEach(x => texturesDict.Add(x.Key, x.Value));
+                }
+
+                var vifGeometryGameObj = new Klonoa2VIFGameObject(geometry, texturesDict, loader.Context);
+                GameObject obj = vifGeometryGameObj.CreateGameObject("Background " + i);
+                // Bounds levelBounds = new Bounds();
+                var layerDimensions = new Rect(0, 0, 1, 1); // TODO: Calculate layer dimensions properly 
+
+                obj.transform.SetParent(parent.transform, false);
+                // TODO: Find correct scale value
+                float scale = 1.5f - 0.0005f * i; // Slightly scale each background to prevent z-fighting
+                obj.transform.localScale = new Vector3(scale, scale, scale);
+
+                backgroundLayers.Add(new Unity_Layer_GameObject(true)
+                {
+                    Name = "Background " + i,
+                    ShortName = "BG" + i,
+                    Graphics = obj,
+                    Dimensions = layerDimensions,
+                    DisableGraphicsWhenCollisionIsActive = true
+                });
+            }
+
+            return backgroundLayers;
         }
         
         #endregion

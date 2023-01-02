@@ -2,8 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using BinarySerializer;
 using BinarySerializer.Klonoa.LV;
-using Games.PS2Klonoa;
-using Ray1Map.PS2Klonoa;
 using UnityEngine;
 
 namespace Ray1Map.PS2Klonoa
@@ -44,13 +42,17 @@ namespace Ray1Map.PS2Klonoa
                     MeshFilter mf = obj.AddComponent<MeshFilter>();
                     MeshRenderer mr = obj.AddComponent<MeshRenderer>();
                     mf.mesh = block.GetMesh();
-                    string materialKey = $"tbp{block.TEX0.TPB0}_cbp{block.TEX0.CBP}_{block.TEX0.TW}x{block.TEX0.TH}";
-                    if (!materialDict.TryGetValue(materialKey, out var material))
+                    Material material = Controller.obj.levelController.controllerTilemap.unlitTransparentCutoutMaterial;
+                    if (Textures != null)
                     {
-                        material = new Material(Controller.obj.levelController.controllerTilemap.unlitTransparentCutoutMaterial);
-                        if (block.TEX0.TPB0 > 0)
-                            material.SetTexture("_MainTex", Textures.GetTexture(block.TEX0));
-                        materialDict[materialKey] = material;
+                        string materialKey = $"tbp{block.TEX0.TPB0}_cbp{block.TEX0.CBP}_{block.TEX0.TW}x{block.TEX0.TH}";
+                        if (!materialDict.TryGetValue(materialKey, out material))
+                        {
+                            material = new Material(Controller.obj.levelController.controllerTilemap.unlitTransparentCutoutMaterial);
+                            if (block.TEX0.TPB0 > 0)
+                                material.SetTexture("_MainTex", Textures.GetTexture(block.TEX0));
+                            materialDict[materialKey] = material;
+                        }
                     }
                     
                     mr.material = material;

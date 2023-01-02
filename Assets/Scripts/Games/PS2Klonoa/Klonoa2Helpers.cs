@@ -8,7 +8,7 @@ using Cysharp.Threading.Tasks;
 using Ray1Map;
 using UnityEngine;
 
-namespace Games.PS2Klonoa
+namespace Ray1Map.PS2Klonoa
 {
     public static class Klonoa2Helpers
     {
@@ -110,7 +110,7 @@ namespace Games.PS2Klonoa
 
                 if (!textureDict.TryGetValue(texturePacket.BITBLTBUF.DBP, out var texture))
                 {
-                    texture = TextureHelpers.CreateTexture2D(256, 256, true, true);
+                    texture = TextureHelpers.CreateTexture2D(512, 512, true, true);
                     textureDict[texturePacket.BITBLTBUF.DBP] = texture;
                 }
 
@@ -118,8 +118,26 @@ namespace Games.PS2Klonoa
                 int height = texturePacket.TRXREG.RRH;
                 int startX = texturePacket.TRXPOS.DSAX;
                 int startY = texturePacket.TRXPOS.DSAY;
-                texture.FillRegion(texturePacket.ImgData, 0, palette, 
-                    Util.TileEncoding.Linear_4bpp, startX, startY, width, height);
+                if (texturePacket.BITBLTBUF.DPSM == GS.PixelStorageMode.PSMT4)
+                {
+                    texture.FillRegion(texturePacket.ImgData, 0, palette,
+                        Util.TileEncoding.Linear_4bpp, startX, startY, width, height);
+                }
+                else
+                {
+                    texture.FillRegion(texturePacket.ImgData, 0, palette, 
+                        Util.TileEncoding.Linear_8bpp, startX, startY, width, height, paletteFunction: (
+                            (b, x, y) =>
+                            {
+                                // Deswizzle palette
+                                int mod = b % 0x20;
+                                if (mod >= 0x08 && mod <= 0x0F)
+                                    b += 0x08;
+                                else if (mod >= 0x10 && mod <= 0x17)
+                                    b -= 0x08;
+                                return palette[b];
+                            }));
+                }
             }
 
             return textureDict;
